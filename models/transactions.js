@@ -41,10 +41,6 @@ const transactionSchema = new Schema({
         type: String,
         default: '' // Optional with default as empty string
     },
-    userId:{
-        type: Schema.Types.ObjectId,
-        ref:"userProfile"
-    }
 });
 
 // Schema for storing multiple transactions
@@ -60,6 +56,10 @@ const transactionsSchema = new Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    userId:{
+        type: Schema.Types.ObjectId,
+        ref:"userProfile"
     }
 });
 
