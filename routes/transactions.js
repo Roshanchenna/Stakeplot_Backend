@@ -4,4 +4,6 @@ const transactionController = require("../controllers/transactionController");
 
 router.post("/", transactionController.createProfile);
 
+router.get("/", transactionController.getDetails);
+
 module.exports = router;

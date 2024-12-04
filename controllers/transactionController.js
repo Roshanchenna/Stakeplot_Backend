@@ -16,6 +16,19 @@ exports.createProfile = async (req, res) => {
     });
 
     if (profileRecord) {
+      let transactionsRecord = await transactions.Transactions.findOne({
+        userId: profileRecord._id
+      });
+      if (transactionsRecord) {
+        // Append new transactions
+        transactionsRecord.transactions.push(...transactionsData.transactions);
+        await transactionsRecord.save();
+      } else {
+        // Create new transactions record
+        transactionsRecord = await transactions.Transactions.create(
+          transactionsData
+        );
+      }
       return res.json({
         message: "Already existing user",
       });
@@ -78,9 +91,9 @@ exports.createProfile = async (req, res) => {
         valueDate: new Date(t.valueDate),
         txnId: t.txnId,
         narration: t.narration,
-        reference: t.reference,
+        reference: t.reference,w
       })),
-      userId: profileRecord._id
+      userId: profileRecord._id,
     };
 
     let transactionsRecord = await transactions.Transactions.findOne({
@@ -105,6 +118,57 @@ exports.createProfile = async (req, res) => {
         summary: summaryRecord,
         transactions: transactionsRecord,
       },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+exports.getDetails = async (req, res) => {
+  try {
+    const allTransactions = await transactions.Transactions.find();
+
+    // Create a map to store monthly totals
+    const monthlyTotals = {};
+
+    allTransactions.forEach((account) => {
+      account.transactions.forEach((transaction) => {
+        const date = new Date(transaction.transactionTimestamp);
+        const monthKey = `${date.getFullYear()}-${String(
+          date.getMonth() + 1
+        ).padStart(2, "0")}`;
+
+        // Initialize month if it doesn't exist
+        if (!monthlyTotals[monthKey]) {
+          monthlyTotals[monthKey] = {
+            debit: 0,
+            credit: 0,
+          };
+        }
+
+        // Add amount to appropriate total
+        if (transaction.type === "DEBIT") {
+          monthlyTotals[monthKey].debit += transaction.amount;
+        } else if (transaction.type === "CREDIT") {
+          monthlyTotals[monthKey].credit += transaction.amount;
+        }
+      });
+    });
+
+    // Convert to array and sort by month
+    const result = Object.entries(monthlyTotals)
+      .map(([month, totals]) => ({
+        month,
+        ...totals,
+      }))
+      .sort((a, b) => b.month.localeCompare(a.month));
+
+    res.json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     res.status(500).json({
