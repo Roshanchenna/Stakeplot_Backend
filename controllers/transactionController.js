@@ -5,7 +5,7 @@ const userProfile = require("../models/userProfile");
 
 exports.createProfile = async (req, res) => {
   try {
-    const data = req.body.body[0]; // Access the first element of the body array
+    const data = req.body.body ? req.body.body[0] : req.body[0];
     const fiObject = data.fiObjects[0]; // Access the first FI object
 
     const holderData = fiObject.Profile.Holders.Holder;

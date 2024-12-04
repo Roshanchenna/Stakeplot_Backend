@@ -11,7 +11,7 @@ const transactionSchema = new Schema({
     mode: {
         type: String,
         required: true,
-        enum: ['UPI', 'OTHERS', 'CASH', 'CHEQUE', 'NETBANKING'] // Expand based on all possible modes
+        enum: ['UPI', 'OTHERS', 'CASH', 'CHEQUE', 'NETBANKING','ATM'] // Expand based on all possible modes
     },
     amount: {
         type: Number,
