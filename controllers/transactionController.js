@@ -6,19 +6,33 @@ const userProfile = require("../models/userProfile");
 
 exports.createProfile = async (req, res) => {
     try {
-        console.log('Received body:', JSON.stringify(req.body, null, 2));
-        
-        // Check if body is in the expected format
-        const data = req.body.body ? req.body.body[0] : req.body[0];
-        
-        if (!data || !data.fiObjects) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid request body structure"
-            });
-        }
+        const data = req.body.body[0]; // Access the first element of the body array
+        const fiObject = data.fiObjects[0]; // Access the first FI object
 
-        const fiObject = data.fiObjects[0];
+        const holderData = fiObject.Profile.Holders.Holder;
+
+        // Check if user already exists based on mobile number
+        let profileRecord = await userProfile.findOne({ mobile: holderData.mobile });
+        if(profileRecord){
+            return res.json({
+                message: "Already existing user"
+            })
+        }
+        if (!profileRecord) {
+            // Create User Profile if it doesn't exist
+            const userProfileData = {
+                name: holderData.name,
+                dob: new Date(holderData.dob),
+                mobile: holderData.mobile,
+                nominee: holderData.nominee,
+                landline: holderData.landline,
+                address: holderData.address,
+                email: holderData.email,
+                pan: holderData.pan,
+                ckyccompliance: holderData.ckycCompliance
+            };
+            profileRecord = await userProfile.create(userProfileData);
+        }
 
         // 1. Create FIP record
         const fipData = {
@@ -27,26 +41,12 @@ exports.createProfile = async (req, res) => {
             custId: data.custId,
             consentId: data.consentId,
             sessionId: data.sessionId,
-            fiAccountInfo: data.fiAccountInfo
+            fiAccountInfo: data.fiAccountInfo,
+            userId: profileRecord._id // Reference to userProfile
         };
         const fipRecord = await fiAccount.create(fipData);
 
-        // 2. Create User Profile
-        const holderData = fiObject.Profile.Holders.Holder;
-        const userProfileData = {
-            name: holderData.name,
-            dob: new Date(holderData.dob),
-            mobile: holderData.mobile,
-            nominee: holderData.nominee,
-            landline: holderData.landline,
-            address: holderData.address,
-            email: holderData.email,
-            pan: holderData.pan,
-            ckyccompliance: holderData.ckycCompliance
-        };
-        const profileRecord = await userProfile.create(userProfileData);
-
-        // 3. Create Summary
+        // 2. Create Summary
         const summaryData = {
             currency: fiObject.Summary.currency,
             exchangeRate: fiObject.Summary.exchgeRate,
@@ -59,11 +59,12 @@ exports.createProfile = async (req, res) => {
             openingDate: new Date(fiObject.Summary.openingDate),
             currentODLimit: parseFloat(fiObject.Summary.currentODLimit),
             drawingLimit: parseFloat(fiObject.Summary.drawingLimit),
-            status: fiObject.Summary.status
+            status: fiObject.Summary.status,
+            userId: profileRecord._id // Reference to userProfile
         };
         const summaryRecord = await summary.create(summaryData);
 
-        // 4. Create Transactions
+        // 3. Create or Append Transactions
         const transactionsData = {
             accountId: data.fiAccountInfo[0].accountRefNo,
             transactions: fiObject.Transactions.Transaction.map(t => ({
@@ -76,9 +77,19 @@ exports.createProfile = async (req, res) => {
                 txnId: t.txnId,
                 narration: t.narration,
                 reference: t.reference
-            }))
+            })),
+            userId: profileRecord._id // Reference to userProfile
         };
-        const transactionsRecord = await transactions.Transactions.create(transactionsData);
+
+        let transactionsRecord = await transactions.Transactions.findOne({ accountId: transactionsData.accountId });
+        if (transactionsRecord) {
+            // Append new transactions
+            transactionsRecord.transactions.push(...transactionsData.transactions);
+            await transactionsRecord.save();
+        } else {
+            // Create new transactions record
+            transactionsRecord = await transactions.Transactions.create(transactionsData);
+        }
 
         res.status(201).json({
             success: true,

@@ -52,6 +52,10 @@ const summarySchema = new Schema({
         type: String,
         required: true,
         enum: ['ACTIVE', 'INACTIVE', 'CLOSED'] // Add other statuses if applicable
+    },
+    userId:{
+        type: Schema.Types.ObjectId,
+        ref:"userProfile"
     }
 });
 

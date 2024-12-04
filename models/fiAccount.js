@@ -36,6 +36,10 @@ const fipSchema = new Schema({
     fiAccountInfo: {
         type: [fiAccountInfoSchema],
         required: true
+    },
+    userId:{
+        type: Schema.Types.ObjectId,
+        ref:"userProfile"
     }
 });
 

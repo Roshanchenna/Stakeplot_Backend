@@ -40,6 +40,10 @@ const transactionSchema = new Schema({
     reference: {
         type: String,
         default: '' // Optional with default as empty string
+    },
+    userId:{
+        type: Schema.Types.ObjectId,
+        ref:"userProfile"
     }
 });
 
